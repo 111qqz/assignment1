@@ -300,16 +300,18 @@ class Executor:
         print("self.eval_node_list={}".format(self.eval_node_list))
         # Traverse graph in topological sort order and compute values for all nodes.
         topo_order = find_topo_sort(self.eval_node_list)
+        # 按照拓扑排序的顺序来计算，保证计算当前节点的值时，其依赖的值都计算出来了。
         """TODO: Your code here"""
         for node in topo_order:
-            if isinstance(node.op,PlaceholderOp):
+            if isinstance(node.op, PlaceholderOp):
                 continue
+            # 在实际计算的时候，要用具体的值来替代node
             input_vals = [node_to_val_map[x] for x in node.inputs]
             res = node.op.compute(node,input_vals)
             node_to_val_map[node] = res
-            # vanode.op.compute(node,node.inputs)
 
         # Collect node values.
+        # 因为是按照topo order计算的，最后再变为和输入相同的顺序去输出
         node_val_results = [node_to_val_map[node] for node in self.eval_node_list]
         return node_val_results
 
@@ -329,34 +331,48 @@ def gradients(output_node, node_list):
 
     # a map from node to a list of gradient contributions from each output node
     node_to_output_grads_list = {}
+    # node_to_output_grads_list 的含义有些让人费解。。
+    # key是node,val其实是一个list,表示node对哪些后续节点的gradient有作用
+
+
     # Special note on initializing gradient of output_node as oneslike_op(output_node):
     # We are really taking a derivative of the scalar reduce_sum(output_node)
     # instead of the vector output_node. But this is the common case for loss function.
+    # oneslike_op这里其实可以看作是gradient 的placehoder一样的东西。。OnesLike(xxx)里面的xxx其实是节点的名称
     node_to_output_grads_list[output_node] = [oneslike_op(output_node)]
     # a map from node to the gradient of that node
     node_to_output_grad = {}
     # Traverse graph in reverse topological order given the output_node that we are taking gradient wrt.
     reverse_topo_order = reversed(find_topo_sort([output_node]))
-
+    # print("output_node={}".format(output_node))
     """TODO: Your code here"""
     for node in reverse_topo_order:
+        # print("node.name={} op={}".format(node.name, type(node.op)))
+        # print("node_to_output_grads_list[node]={}".format(node_to_output_grads_list[node]))
         grad = sum_node_list(node_to_output_grads_list[node])
+        # print("grad={}".format(grad))
+        
         input_grads = node.op.gradient(node, grad)
-        node_to_output_grad[node] = grad
-        for idx, inp in enumerate(node.inputs):
+        # input_grads表示的node与哪些node的input的节点的gradient有关
+        # print("input_grads={}".format(input_grads))
 
+        node_to_output_grad[node] = grad
+        # print("node.inputs={}".format(node.inputs))
+        for idx, inp in enumerate(node.inputs):
             node_to_output_grads_list[inp] = node_to_output_grads_list.get(inp, [
             ])
             node_to_output_grads_list[inp].append(input_grads[idx])
 
     # Collect results for gradients requested.
+    # print("length of node_to_output_grads_list = {}".format(node_to_output_grads_list))
+    # print("miao miao miapo")
     grad_node_list = [node_to_output_grad[node] for node in node_list]
     return grad_node_list
 
 ##############################
 ####### Helper Methods ####### 
 ##############################
-
+# 最后会输出能够得到node_list中所有节点的节点集合的topo order
 def find_topo_sort(node_list):
     """Given a list of nodes, return a topological sort list of nodes ending in them.
     

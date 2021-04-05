@@ -189,3 +189,19 @@ def test_matmul_two_vars():
     assert np.array_equal(y_val, expected_yval)
     assert np.array_equal(grad_x2_val, expected_grad_x2_val)
     assert np.array_equal(grad_x3_val, expected_grad_x3_val)
+
+
+def test_multi_var_chain_rule():
+    x1 = ad.Variable(name="x1")
+    x2 = x1+3
+    x3 = x1+5
+    y = x2*x3
+
+    grad_x1, grad_x2, grad_x3 = ad.gradients(y, [x1, x2, x3])
+   
+    executor = ad.Executor([y, grad_x1, grad_x2, grad_x3])
+    x1_val = 1 * np.ones(3)
+    x2_val = 2 * np.ones(3)
+    x3_val = 3 * np.ones(3)
+    y_val, grad_x1_val, grad_x2_val, grad_x3_val = executor.run(feed_dict = {x1 : x1_val})
+
